@@ -1,5 +1,12 @@
 # Starting with 5 covolution layers, 2 fully connected and a softmax. Kernals are 3x3. 2D convolutions only for now
 
+#TODOs
+#Fix initilization weights
+#Create accuracy function
+#Function to format a batch
+#Function to format and create test + validation. Need to also change values to float
+#Normalize pixel values? Also normalize cov outputs?
+
 from __future__ import print_function
 import numpy as np
 import tensorflow as tf
@@ -13,24 +20,13 @@ with open(pickle_file, 'rb') as f:
 	features = save['features']
 	labels = save['labels']
 
-high_patch_size = 25
-output_size = 9
-#num_labels = 10
-num_channels = 1 # grayscale
-
-#split dataset into validation and test as well. Scramble images for 2D.
-
-#Probably need to reformat patches to float.
-
-#Create new accuracy function
-
+patch_size = 25
+output_size = 25 - 10 #Change depending on number of conv.
 batch_size = 10
-#patch_size = 5
 depth1 = 30
-depth1 = 40
-depth1 = 50
+depth2 = 40
+depth3 = 50
 num_hidden = 150
-
 kernal_size = 3
 
 graph = tf.Graph()
@@ -38,49 +34,56 @@ graph = tf.Graph()
 with graph.as_default():
 
 	# Input data.
-	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, high_patch_size, high_patch_size))
-	tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, output_size, output_size))
+	tf_train_dataset = tf.placeholder(tf.float32, shape=(batch_size, patch_size, patch_size, 1))
+	tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, output_size, output_size, 1))
 	tf_valid_dataset = tf.constant(valid_dataset)
 	tf_test_dataset = tf.constant(test_dataset)
-	
-	# Variables.
-	cov1_weights = tf.Variable(tf.truncated_normal(
-			[patch_size, patch_size, num_channels, depth1], stddev=0.1))
-	cov1_biases = tf.Variable(tf.zeros([depth1]))
-	cov2_weights = tf.Variable(tf.truncated_normal(
-			[patch_size, patch_size, depth1, depth2], stddev=0.1))
-	cov2_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
-	cov3_weights = tf.Variable(tf.truncated_normal(
-			[patch_size, patch_size, depth2, depth2], stddev=0.1))
-	cov3_biases = tf.Variable(tf.zeros([depth]))
-	cov4_weights = tf.Variable(tf.truncated_normal(
-			[patch_size, patch_size, depth2, depth3], stddev=0.1))
-	cov4_biases = tf.Variable(tf.constant(1.0, shape=[depth]))
-	cov5_weights = tf.Variable(tf.truncated_normal(
-			[patch_size, patch_size, depth3, num_hidden], stddev=0.1))
-	cov5_biases = tf.Variable(tf.zeros([depth]))
 
-	full1_weights = tf.Variable(tf.truncated_normal(
-			[image_size // 4 * image_size // 4 * depth, num_hidden], stddev=0.1))
-	full1_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
-	full2_weights = tf.Variable(tf.truncated_normal(
-			[num_hidden, num_labels], stddev=0.1))
-	full2_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
-	
-	class_weights = tf.Variable(tf.truncated_normal(
-			[num_hidden, num_labels], stddev=0.1))
-	class_biases = tf.Variable(tf.constant(1.0, shape=[num_labels]))
+	# Variables.
+	cov1_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, 1, depth1], stddev=0.1))
+	cov1_biases = tf.Variable(tf.zeros([depth1]))
+
+	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=0.1))
+	cov2_biases = tf.Variable(tf.constant(1.0, shape=[depth2]))
+
+	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=0.1))
+	cov3_biases = tf.Variable(tf.zeros([depth2]))
+
+	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=0.1))
+	cov4_biases = tf.Variable(tf.constant(1.0, shape=[depth3]))
+
+	cov5_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=0.1))
+	cov5_biases = tf.Variable(tf.zeros([depth3]))
+
+
+	full1_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, num_hidden], stddev=0.1))
+	full1_biases = tf.Variable(tf.zeros([num_hidden]))
+
+	full2_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, num_hidden], stddev=0.1))
+	full2_biases = tf.Variable(tf.constant(1.0, shape=[num_hidden]))
+
+
+	class_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, 1], stddev=0.1))  #Maybe should be 2? Not quite sure why it's 2 though
+	class_biases = tf.Variable(tf.zeros([1]))
 
 	# Model.
 	def model(data):
-		conv = tf.nn.conv2d(data, layer1_weights, [1, kernal_size, kernal_size, 1], padding='SAME')
-		hidden = tf.nn.relu(conv + layer1_biases)
-		conv = tf.nn.conv2d(hidden, layer2_weights, [1, kernal_size, kernal_size, 1], padding='SAME')
-		hidden = tf.nn.relu(conv + layer2_biases)
-		shape = hidden.get_shape().as_list()
-		reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
-		hidden = tf.nn.relu(tf.matmul(reshape, layer3_weights) + layer3_biases)
-		return tf.matmul(hidden, layer4_weights) + layer4_biases
+		conv = tf.nn.conv2d(data, cov1_weights, [1, 1, 1, 1], padding='VALID')				#cov1
+		hidden = tf.nn.relu(conv + cov1_biases)
+		conv = tf.nn.conv2d(hidden, cov2_weights, [1, 1, 1, 1], padding='VALID')			#cov2
+		hidden = tf.nn.relu(conv + cov2_biases)
+		conv = tf.nn.conv2d(data, cov3_weights, [1, 1, 1, 1], padding='VALID')				#cov3
+		hidden = tf.nn.relu(conv + cov3_biases)
+		conv = tf.nn.conv2d(hidden, cov4_weights, [1, 1, 1, 1], padding='VALID')			#cov4
+		hidden = tf.nn.relu(conv + cov4_biases)
+		conv = tf.nn.conv2d(data, cov5_weights, [1, 1, 1, 1], padding='VALID')				#cov5
+		hidden = tf.nn.relu(conv + cov5_biases)
+		conv = tf.nn.conv2d(hidden, full1_weights, [1, 1, 1, 1], padding='VALID')			#FC1
+		hidden = tf.nn.relu(conv + full1_biases)
+		conv = tf.nn.conv2d(data, full2_weights, [1, 1, 1, 1], padding='VALID')				#FC2
+		hidden = tf.nn.relu(conv + full2_biases)
+		conv = tf.nn.conv2d(hidden, class_weights, [1, 1, 1, 1], padding='VALID')			#Classification
+		return conv + class_biases
 	
 	# Training computation.
 	logits = model(tf_train_dataset)
