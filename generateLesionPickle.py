@@ -2,6 +2,7 @@ import dicom
 import os
 import numpy
 from matplotlib import pyplot
+from six.moves import cPickle as pickle
 
 thresholdVal = 5000
 featureArray = []
@@ -40,15 +41,16 @@ for i in range(1, 13):
 	ArrayDicom[highVal] = 1
 	labelArray.append(ArrayDicom)
 
-i = 9
-k = 13
-#for i in range(len(featureArray)):
-#	for k in range(len(featureArray[i])):
-img = featureArray[i][k]
-pyplot.imshow(img, cmap='gray')
-pyplot.draw()
-pyplot.show()
-img = labelArray[i][k]
-pyplot.imshow(img, cmap='gray')
-pyplot.draw()		
-pyplot.show()
+pickle_file = 'lesion.pickle'
+
+try:
+  f = open(pickle_file, 'wb')
+  save = {
+    'features': featureArray,
+    'labels': labelArray
+    }
+  pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
+  f.close()
+except Exception as e:
+  print('Unable to save data to', pickle_file, ':', e)
+  raise
