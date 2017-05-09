@@ -13,6 +13,7 @@ import numpy as np
 import tensorflow as tf
 from six.moves import cPickle as pickle
 from six.moves import range
+from parameters import *
 
 def accuracy(predictions, labels):
 	  return (100.0 * np.sum(np.argmax(predictions, 3) == np.argmax(labels, 3)) / predictions.shape[0])
@@ -28,14 +29,14 @@ with open(pickle_file, 'rb') as f:
 	valid_features = save['valid_features']
 	valid_labels = save['valid_labels']
 
-patch_size = 25
-output_size = 25 - 10 #Change depending on number of conv.
-batch_size = 10
-depth1 = 30
-depth2 = 40
-depth3 = 50
-num_hidden = 150
-kernel_size = 3
+#patch_size = 25
+#output_size = 25 - 10 #Change depending on number of conv.
+#batch_size = 10
+#depth1 = 30
+#depth2 = 40
+#depth3 = 50
+#num_hidden = 150
+#kernel_size = 3
 
 graph = tf.Graph()
 
