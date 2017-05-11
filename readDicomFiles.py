@@ -2,9 +2,9 @@ import dicom
 import os
 import numpy
 from matplotlib import pyplot
-import cv2
+#import cv2
 
-PathDicom = "./LesionDataset/9/Labels"
+PathDicom = "./LesionDataset/2/Labels"
 lstFilesDCM = []  # create an empty list
 for dirName, subdirList, fileList in os.walk(PathDicom):
     for filename in fileList:
@@ -36,7 +36,7 @@ for filenameDCM in lstFilesDCM:
     # store the raw image data
     ArrayDicom[:, :, lstFilesDCM.index(filenameDCM)] = ds.pixel_array 
 
-img = ArrayDicom[:, :, 15]
+img = ArrayDicom[:, :, 20]
 #cv2.imshow("image", img)
 pyplot.imshow(img, cmap='gray')
 pyplot.show()
