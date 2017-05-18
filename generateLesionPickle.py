@@ -18,10 +18,12 @@ for i in range(1, 13):
 				lstFilesDCM.append(os.path.join(dirName,filename))
 	RefDs = dicom.read_file(lstFilesDCM[0])
 	ConstPixelDims = (len(lstFilesDCM), int(RefDs.Rows), int(RefDs.Columns))
-	ArrayDicom = numpy.zeros(ConstPixelDims, dtype=RefDs.pixel_array.dtype)
+	ArrayDicom = numpy.zeros(ConstPixelDims, dtype=numpy.float32)
 	for filenameDCM in lstFilesDCM:
 		ds = dicom.read_file(filenameDCM)
-		ArrayDicom[lstFilesDCM.index(filenameDCM), :, :] = ds.pixel_array 
+		img = ds.pixel_array
+		img = (2/img.max()) * img - 1	#normalize
+		ArrayDicom[lstFilesDCM.index(filenameDCM), :, :] = img #ds.pixel_array 
 	featureArray.append(ArrayDicom)
 
 	lstFilesDCM = []

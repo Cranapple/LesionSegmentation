@@ -16,6 +16,7 @@ import tensorflow as tf
 from six.moves import cPickle as pickle
 from six.moves import range
 from parameters import *
+import sys
 
 def accuracy(predictions, labels):
 	  return (100.0 * np.sum(np.argmax(predictions, 3) == np.argmax(labels, 3)) / (predictions.shape[0] * predictions.shape[1] * predictions.shape[2]))
@@ -31,10 +32,17 @@ with open(pickle_file, 'rb') as f:
 	valid_features = save['valid_features']
 	valid_labels = save['valid_labels']
 
-graph = tf.Graph()
+device_name = "gpu"
 
-with graph.as_default():
+if device_name == "gpu":
+    device_name = "/GPU:0"
+else:
+    device_name = "/cpu:0"
 
+#graph = tf.Graph()
+
+#with graph.as_default():
+with tf.device(device_name):
 	# Input data.
 	tf_train_features = tf.placeholder(tf.float32, shape=(batch_size, patch_size, patch_size, 1))
 	tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, output_size, output_size, 2))
@@ -42,30 +50,30 @@ with graph.as_default():
 	tf_valid_labels = tf.constant(valid_labels)
 
 	# Variables.
-	cov1_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, 1, depth1], stddev=0.1))
+	cov1_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, 1, depth1], stddev=0.01))
 	cov1_biases = tf.Variable(tf.zeros([depth1]))
 
-	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=0.1))
+	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=0.01))
 	cov2_biases = tf.Variable(tf.zeros([depth2]))
 
-	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=0.1))
+	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=0.01))
 	cov3_biases = tf.Variable(tf.zeros([depth2]))
 
-	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=0.1))
+	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=0.01))
 	cov4_biases = tf.Variable(tf.zeros([depth3]))
 
-	cov5_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=0.1))
+	cov5_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=0.01))
 	cov5_biases = tf.Variable(tf.zeros([depth3]))
 
 
-	full1_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, num_hidden], stddev=0.1))
+	full1_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, num_hidden], stddev=0.01))
 	full1_biases = tf.Variable(tf.zeros([num_hidden]))
 
-	full2_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, num_hidden], stddev=0.1))
+	full2_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, num_hidden], stddev=0.01))
 	full2_biases = tf.Variable(tf.zeros([num_hidden]))
 
 
-	class_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, 2], stddev=0.1)) #First for lesion, second for non-lesion
+	class_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, 2], stddev=0.01)) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
 
 	# Model.
@@ -90,7 +98,7 @@ with graph.as_default():
 	# Training computation.
 	logits = model(tf_train_features)
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=tf.reshape(logits, [-1, 2]), labels=tf.reshape(tf_train_labels, [-1, 2])))
-		
+	#test = tf.reshape(tf_train_labels, [-1, 2])
 	# Optimizer.
 	optimizer = tf.train.GradientDescentOptimizer(0.05).minimize(loss)	#Fiddle this parameter
 	
@@ -101,9 +109,9 @@ with graph.as_default():
 
 #Save the model for running tests on images
 
-num_steps = 1000
+num_steps = 10000000
 
-with tf.Session(graph=graph) as session:
+with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=True)) as session:
 	tf.global_variables_initializer().run()
 	print('Initialized')
 	saver = tf.train.Saver()
@@ -113,9 +121,11 @@ with tf.Session(graph=graph) as session:
 		batch_labels = train_labels[offset:(offset + batch_size), :, :, :]
 		feed_dict = {tf_train_features : batch_features, tf_train_labels : batch_labels}
 		_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
-		if (step % 50 == 0):
+		#print(test)
+		if (step % 1 == 0):
 			print('Minibatch loss at step %d: %f' % (step, l))
 			print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
 			print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
-	saver.save(session, 'lesion_model', global_step=1000)
+			sys.stdout.flush()
+	saver.save(session, '.\lesion_model', global_step=num_steps)
 	#print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))

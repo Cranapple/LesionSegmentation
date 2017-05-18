@@ -1,4 +1,3 @@
-import dicom
 import os
 import numpy as np
 from matplotlib import pyplot

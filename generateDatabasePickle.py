@@ -1,6 +1,5 @@
 from __future__ import print_function
 import numpy as np
-import tensorflow as tf
 from six.moves import cPickle as pickle
 from six.moves import range
 from parameters import *
@@ -53,12 +52,15 @@ for n in range(database_size):
 		if np.sum(patch_labels[n, :, :, 0]) > 0.5:
 			numLesions += 1
 			success = True
-			#print(np.sum(patch_labels[n, :, :, 0]))
+			print(np.sum(patch_labels[n, :, :, 0]))
 
 		if n // 2 <= numLesions:
 			success = True;
 
 #Add in centering and normalization
+
+mean_image = np.mean(patch_features, axis = 0)
+patch_features -= mean_image
 
 train_features, valid_features = np.split(patch_features, [train_size])
 train_labels, valid_labels = np.split(patch_labels, [train_size])
@@ -71,7 +73,8 @@ try:
     'train_features': train_features,
     'train_labels': train_labels,
     'valid_features': valid_features,
-    'valid_labels': valid_labels
+    'valid_labels': valid_labels,
+    'mean_image' : mean_image
     }
   pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
   f.close()
