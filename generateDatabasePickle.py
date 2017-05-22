@@ -54,7 +54,7 @@ for n in range(database_size):
 			success = True
 			print(np.sum(patch_labels[n, :, :, 0]))
 
-		if n // 2 <= numLesions:
+		if n / 1.5 <= numLesions:
 			success = True;
 
 #Add in centering and normalization
