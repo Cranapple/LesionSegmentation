@@ -107,7 +107,7 @@ with tf.device(device_name):
 	loss = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=tf.reshape(logits, [-1, 2]), labels=tf.reshape(tf_train_labels, [-1, 2])))
 	#test = tf.reshape(tf_train_labels, [-1, 2])
 	# Optimizer.
-	optimizer = tf.train.GradientDescentOptimizer(0.005).minimize(loss)	#Fiddle this parameter
+	optimizer = tf.train.AdamOptimizer(0.005).minimize(loss)	#Fiddle this parameter
 	
 	# Predictions
 	train_prediction = tf.nn.softmax(logits)
