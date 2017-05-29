@@ -12,10 +12,10 @@ import tensorflow as tf
 
 numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
-numTestSamplePatches = 10		#Prediction Patches
-numTestSamples = 5				#Prediction Images
+numTestSamplePatches = 5		#Prediction Patches
+numTestSamples = 10				#Prediction Images
 modelName = "lesion_model"
-step = 250
+step = 1000
 heatMap = True;
 
 #---------------------------------------------------------------------------------

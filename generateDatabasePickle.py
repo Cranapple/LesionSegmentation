@@ -57,7 +57,7 @@ for n in range(database_size):
 			continue
 		patch_labels[n, :, :, 1] = abs(1 - patch_labels[n, :, :, 0])
 
-		if np.sum(patch_labels[n, :, :, 0]) > 0.5:
+		if patch_labels[n, outputSpan, outputSpan, 0] > 0.5:
 			numLesions += 1
 			success = True
 			#print(np.sum(patch_labels[n, :, :, 0]))
