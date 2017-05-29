@@ -13,10 +13,12 @@ epsilon = 1e-3
 def accuracy(predictions, labels):
 	return (100.0 * np.sum(np.argmax(predictions, 3) == np.argmax(labels, 3)) / (predictions.shape[0] * predictions.shape[1] * predictions.shape[2]))
 
-def DSC(predictions, labels)
+#Dice Score
+def DSC(predictions, labels):
 	TP = np.sum(np.logical_and(np.argmax(predictions, 3) == 1, np.argmax(labels, 3) == 1))
-	F = np.sum(np.argmax(predictions, 3) != np.argmax(labels, 3))	#FP + FN = F
-	return 2*TP / (2*TP + F)
+	FP = np.sum(np.logical_and(np.argmax(predictions, 3) == 1, np.argmax(labels, 3) == 0))
+	P = np.sum(np.argmax(labels, 3) == 1)
+	return 100 * TP / (FP + P + epsilon)
 
 def percentLesion(labels):
 	shape = labels.shape
@@ -178,7 +180,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		feed_dict = {tf_train_features : batch_features, tf_train_labels : batch_labels}
 		_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
 		#print(predictions.shape)
-		if (step % 1 == 0):
+		if (step % 5 == 0):
 			print('Minibatch loss at step %d: %f' % (step, l))
 			print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
 			print('Minibatch DSC: %.1f%%' % DSC(predictions, batch_labels))
