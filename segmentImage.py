@@ -10,12 +10,12 @@ import tensorflow as tf
 
 #Program to run and vizualize a segmentation on a image using the saved model
 
-numPatchSamples = 20				#Patches
+numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
-numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 0				#Prediction Images
+numTestSamplePatches = 10		#Prediction Patches
+numTestSamples = 5				#Prediction Images
 modelName = "lesion_model"
-step = 500
+step = 250
 heatMap = True;
 
 #---------------------------------------------------------------------------------

@@ -62,7 +62,7 @@ for n in range(database_size):
 			success = True
 			#print(np.sum(patch_labels[n, :, :, 0]))
 
-		if n / 1.5 <= numLesions:
+		if n * datasetPercentLesion <= numLesions:
 			success = True;
 
 train_features, valid_features = np.split(patch_features, [train_size])

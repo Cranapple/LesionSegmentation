@@ -88,7 +88,7 @@ with tf.device(device_name):
 	class_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, 2], stddev=sqrt(2.0/num_hidden))) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
 
-	def batch_norm_wrapper(inputs, is_training, decay = 0.99):
+	def batch_norm_wrapper(inputs, is_training, decay = 0.995):
 
 		scale = tf.Variable(tf.ones([inputs.get_shape()[-1]]))
 		beta = tf.Variable(tf.zeros([inputs.get_shape()[-1]]))
@@ -161,6 +161,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 	tf.global_variables_initializer().run()
 	print('Initialized')
 	saver = tf.train.Saver()
+	print('Valid Label Percent: %.1f%%\n' % (100 * percentLesion(valid_labels)))
 	for step in range(num_steps):
 		offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
 		batch_features = train_features[offset:(offset + batch_size), :, :, :]
@@ -171,14 +172,14 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		if (step % 1 == 0):
 			print('Minibatch loss at step %d: %f' % (step, l))
 			print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
-			print('Prediction Percent: %.1f%%' % (100 * percentLesion(predictions)))
-			print('Batch Percent: %.1f%%' % (100 * percentLesion(batch_labels)))
+			#print('Prediction Percent: %.1f%%' % (100 * percentLesion(predictions)))
+			#print('Batch Percent: %.1f%%' % (100 * percentLesion(batch_labels)))
 			if (step % 10 == 0):
 				print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
-				print('Valid Pred Percent: %.1f%%' % (100 * percentLesion(valid_prediction.eval())))
-				print('Valid Label Percent: %.1f%%' % (100 * percentLesion(valid_labels)))
+				#print('Valid Pred Percent: %.1f%%' % (100 * percentLesion(valid_prediction.eval())))
+				#print('Valid Label Percent: %.1f%%' % (100 * percentLesion(valid_labels)))
 			print('\n')
 			sys.stdout.flush()
-		if (step % 500 == 0):
+		if (step % 250 == 0):
 			saver.save(session, '.\lesion_model', global_step=step)
 	#print('Test accuracy: %.1f%%' % accuracy(test_prediction.eval(), test_labels))
