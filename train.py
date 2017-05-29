@@ -1,14 +1,3 @@
-# Starting with 5 covolution layers, 2 fully connected and a softmax. Kernals are 3x3. 2D convolutions only for now
-
-#TODOs
-#Fix initilization weights. Make initilized values more legit.
-#Fiddle training rate. Maybe different optimizer?
-
-#OPTIMIZATION IDEAS
-#Add more convolution layers
-#Batch normalize, mean subtract and regularize
-#3D convolutions
-#Dropout and regularization
 
 from __future__ import print_function
 import numpy as np
@@ -45,13 +34,11 @@ with open(pickle_file, 'rb') as f:
 device_name = "gpu"
 
 if device_name == "gpu":
-    device_name = "/GPU:0"
+	device_name = "/GPU:0"
 else:
-    device_name = "/cpu:0"
+	device_name = "/cpu:0"
 
 #graph = tf.Graph()
-
-#ADD IN SUPPORT FOR GLOBAL MEAN AND VAR WITH BATCH NORM. For now computing test image in one big batch should work semi-ok
 
 #with graph.as_default():
 with tf.device(device_name):
@@ -66,67 +53,89 @@ with tf.device(device_name):
 	# Variables.
 	cov1_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, 1, depth1], stddev=sqrt(2.0/depth1)))
 	cov1_biases = tf.Variable(tf.zeros([depth1]))
-	cov1_norm_weights = tf.Variable(tf.ones([depth1]))
-	cov1_norm_biases = tf.Variable(tf.zeros([depth1]))
+	#cov1_norm_weights = tf.Variable(tf.ones([depth1]))
+	#cov1_norm_biases = tf.Variable(tf.zeros([depth1]))
 
 	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=sqrt(2.0/depth1)))
 	cov2_biases = tf.Variable(tf.zeros([depth2]))
-	cov2_norm_weights = tf.Variable(tf.ones([depth2]))
-	cov2_norm_biases = tf.Variable(tf.zeros([depth2]))
+	#cov2_norm_weights = tf.Variable(tf.ones([depth2]))
+	#cov2_norm_biases = tf.Variable(tf.zeros([depth2]))
 
 	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=sqrt(2.0/depth2)))
 	cov3_biases = tf.Variable(tf.zeros([depth2]))
-	cov3_norm_weights = tf.Variable(tf.ones([depth2]))
-	cov3_norm_biases = tf.Variable(tf.zeros([depth2]))
+	#cov3_norm_weights = tf.Variable(tf.ones([depth2]))
+	#cov3_norm_biases = tf.Variable(tf.zeros([depth2]))
 
 	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=sqrt(2.0/depth2)))
 	cov4_biases = tf.Variable(tf.zeros([depth3]))
-	cov4_norm_weights = tf.Variable(tf.ones([depth3]))
-	cov4_norm_biases = tf.Variable(tf.zeros([depth3]))
+	#cov4_norm_weights = tf.Variable(tf.ones([depth3]))
+	#cov4_norm_biases = tf.Variable(tf.zeros([depth3]))
 
 	#cov5_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=0.01))
 	#cov5_biases = tf.Variable(tf.zeros([depth3]))
 
 	full1_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, num_hidden], stddev=sqrt(2.0/depth3)))
 	full1_biases = tf.Variable(tf.zeros([num_hidden]))
-	full1_norm_weights = tf.Variable(tf.ones([num_hidden]))
-	full1_norm_biases = tf.Variable(tf.zeros([num_hidden]))
+	#full1_norm_weights = tf.Variable(tf.ones([num_hidden]))
+	#full1_norm_biases = tf.Variable(tf.zeros([num_hidden]))
 
 	full2_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, num_hidden], stddev=sqrt(2.0/num_hidden)))
 	full2_biases = tf.Variable(tf.zeros([num_hidden]))
-	full2_norm_weights = tf.Variable(tf.ones([num_hidden]))
-	full2_norm_biases = tf.Variable(tf.zeros([num_hidden]))
+	#full2_norm_weights = tf.Variable(tf.ones([num_hidden]))
+	#full2_norm_biases = tf.Variable(tf.zeros([num_hidden]))
 
 
 	class_weights = tf.Variable(tf.truncated_normal([1, 1, num_hidden, 2], stddev=sqrt(2.0/num_hidden))) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
 
+	def batch_norm_wrapper(inputs, is_training, decay = 0.99):
+
+		scale = tf.Variable(tf.ones([inputs.get_shape()[-1]]))
+		beta = tf.Variable(tf.zeros([inputs.get_shape()[-1]]))
+		pop_mean = tf.Variable(tf.zeros([inputs.get_shape()[-1]]), trainable=False)
+		pop_var = tf.Variable(tf.ones([inputs.get_shape()[-1]]), trainable=False)
+
+		if is_training:
+			batch_mean, batch_var = tf.nn.moments(inputs,[0,1,2])
+			train_mean = tf.assign(pop_mean, pop_mean * decay + batch_mean * (1 - decay))
+			train_var = tf.assign(pop_var, pop_var * decay + batch_var * (1 - decay))
+			with tf.control_dependencies([train_mean, train_var]):
+				return tf.nn.batch_normalization(inputs, batch_mean, batch_var, beta, scale, epsilon)
+		else:
+			return tf.nn.batch_normalization(inputs, pop_mean, pop_var, beta, scale, epsilon)
+
 	# Model.
-	def model(data):
+	def model(data, isTraining=True):
 		conv = tf.nn.conv2d(data, cov1_weights, [1, 1, 1, 1], padding='VALID')				#cov1
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,cov1_norm_biases,cov1_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,cov1_norm_biases,cov1_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + cov1_biases)
 		conv = tf.nn.conv2d(hidden, cov2_weights, [1, 1, 1, 1], padding='VALID')			#cov2
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,cov2_norm_biases,cov2_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,cov2_norm_biases,cov2_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + cov2_biases)
 		conv = tf.nn.conv2d(hidden, cov3_weights, [1, 1, 1, 1], padding='VALID')			#cov3
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,cov3_norm_biases,cov3_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,cov3_norm_biases,cov3_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + cov3_biases)
 		conv = tf.nn.conv2d(hidden, cov4_weights, [1, 1, 1, 1], padding='VALID')			#cov4
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,cov4_norm_biases,cov4_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,cov4_norm_biases,cov4_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + cov4_biases)
 
 		conv = tf.nn.conv2d(hidden, full1_weights, [1, 1, 1, 1], padding='VALID')			#FC1
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,full1_norm_biases,full1_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,full1_norm_biases,full1_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + full1_biases)
 		conv = tf.nn.conv2d(hidden, full2_weights, [1, 1, 1, 1], padding='VALID')			#FC2
-		mean, var = tf.nn.moments(conv,[0,1,2])
-		convNorm = tf.nn.batch_normalization(conv,mean,var,full1_norm_biases,full2_norm_weights,epsilon)
+		#mean, var = tf.nn.moments(conv,[0,1,2])
+		#convNorm = tf.nn.batch_normalization(conv,mean,var,full1_norm_biases,full2_norm_weights,epsilon)
+		convNorm = batch_norm_wrapper(conv, isTraining)
 		hidden = tf.nn.relu(convNorm + full2_biases)
 		conv = tf.nn.conv2d(hidden, class_weights, [1, 1, 1, 1], padding='VALID')			#Classification
 		return conv + class_biases
@@ -141,7 +150,7 @@ with tf.device(device_name):
 	# Predictions
 	train_prediction = tf.nn.softmax(logits)
 	valid_prediction = tf.nn.softmax(model(tf_valid_features))
-	test_prediction = tf.nn.softmax(model(tf_test_features), name="labels")
+	test_prediction = tf.nn.softmax(model(tf_test_features, isTraining=False), name="labels")
 	#Test dataset later?
 
 #Save the model for running tests on images
@@ -158,7 +167,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		batch_labels = train_labels[offset:(offset + batch_size), :, :, :]
 		feed_dict = {tf_train_features : batch_features, tf_train_labels : batch_labels}
 		_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
-		print(predictions.shape)
+		#print(predictions.shape)
 		if (step % 1 == 0):
 			print('Minibatch loss at step %d: %f' % (step, l))
 			print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))

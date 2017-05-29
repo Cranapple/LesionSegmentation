@@ -3,14 +3,22 @@ import numpy as np
 from matplotlib import pyplot
 from six.moves import cPickle as pickle
 from parameters import *
-import random
+from numpy import random
 import tensorflow as tf
+
+#---------------------------------------------------------------------------------
 
 #Program to run and vizualize a segmentation on a image using the saved model
 
-numPatchSamples = 0
-numImgSamples = 0
-numTestSamples = 3
+numPatchSamples = 0				#Patches
+numImgSamples = 0				#Images
+numTestSamplePatches = 20		#Prediction Patches
+numTestSamples = 20				#Prediction Images
+modelName = "lesion_model"
+step = 500
+heatMap = True;
+
+#---------------------------------------------------------------------------------
 
 #Testing the dataset
 
@@ -30,10 +38,11 @@ with open(pickle_file, 'rb') as f:
 	features = save['features']
 	labels = save['labels']
 
-for i in random.sample(range(0, 10), numPatchSamples):
-	img1 = valid_features[i, :, :, 0]
-	img2 = valid_labels[i, :, :, 0]
-	img3 = valid_labels[i, :, :, 1]
+#TEST PATCHES
+for i in random.choice(train_size, numPatchSamples):
+	img1 = train_features[i, :, :, 0]
+	img2 = train_labels[i, :, :, 0]
+	img3 = train_labels[i, :, :, 1]
 	img = np.zeros((patch_size, patch_size, 3), dtype=np.float32)
 	img[:, :, 0] = img1
 	img[8:17, 8:17, 1] = img2
@@ -41,36 +50,64 @@ for i in random.sample(range(0, 10), numPatchSamples):
 	pyplot.imshow(img)
 	pyplot.show()
 
-pickle_file = 'lesion.pickle'
-
-with open(pickle_file, 'rb') as f:
-	save = pickle.load(f)
-	features = save['features']
-	labels = save['labels']
-
-
-for i in random.sample(range(0, 13), numImgSamples):
-	for z in random.sample(range(0, len(features[i])-1), 1):
+#TEST IMAGES
+for i in random.choice(12, numImgSamples):
+	for z in random.choice(len(features[i]), 1):
 		img = features[i][z]
+		pyplot.subplot(121)
 		pyplot.imshow(img)
-		pyplot.show()
 		img = labels[i][z]
+		pyplot.subplot(122)
 		pyplot.imshow(img)
 		pyplot.show()
 
 
 #Testing the model
-modelName = "lesion_model"
-step = 1500
 
 with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)) as session:
 	new_saver = tf.train.import_meta_graph("./" + modelName + "-" + str(step) + ".meta")
 	new_saver.restore(session, tf.train.latest_checkpoint('./'))
-	session.run(tf.global_variables_initializer())
-	#print(len(features))
-	for i in random.sample(range(0, 13), numTestSamples):
-		print(i)
-		for z in random.sample(range(0, len(features[i])), 1):
+	#session.run(tf.global_variables_initializer())
+	graph = tf.get_default_graph()
+	tf_test_features = graph.get_tensor_by_name("features:0")
+	test_prediction = graph.get_tensor_by_name("labels:0")
+
+	#TEST PATCH PREDICTIONS
+	for i in random.choice(train_size, numTestSamplePatches):
+		img1 = train_features[i, :, :, 0]
+		img2 = train_labels[i, :, :, 0]
+		img3 = train_labels[i, :, :, 1]
+		img = np.zeros((patch_size, patch_size, 3), dtype=np.float32)
+		img[:, :, 0] = img1
+		img[8:17, 8:17, 1] = img2
+		img[8:17, 8:17, 2] = img3
+		pyplot.subplot(121)
+		pyplot.imshow(img)
+
+		f = img1.reshape((1, patch_size, patch_size, 1))
+		feed_dict = {tf_test_features : f}
+		output = session.run([test_prediction], feed_dict=feed_dict)
+		output = np.array(output).reshape((1, output_size, output_size, 2))
+		if heatMap:
+			img2 = output[0, :, :, 0]
+		else:
+			img2 = output[0, :, :, 0] > 0.5
+		img3 = 1 - img2
+		img = np.zeros((patch_size, patch_size, 3), dtype=np.float32)
+		img[:, :, 0] = img1
+		img[8:17, 8:17, 1] = img2
+		img[8:17, 8:17, 2] = img3
+		pyplot.subplot(122)
+		pyplot.imshow(img)
+
+		pyplot.show()
+
+	#TEST FULL IMAGE PREDICTIONS
+	for i in random.choice(12, numTestSamples):
+		for z in random.choice(len(features[i]), 1):
+	#for i in range(0, 10):
+	#	for z in range(10, 11):
+	#		i = 0
 			imgF = features[i][z]
 			imgL = labels[i][z]
 			imgPL = np.zeros(imgL.shape, dtype=np.float32)
@@ -82,9 +119,6 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 				for y in range(yDim):
 					patches[x * yDim + y, :, :, 0] = imgF[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
 
-			graph = tf.get_default_graph()
-			tf_test_features = graph.get_tensor_by_name("features:0")
-			test_prediction = graph.get_tensor_by_name("labels:0")
 			#print(patches.shape)
 			#print(imgPL.shape)
 			feed_dict = {tf_test_features : patches}
@@ -95,7 +129,10 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 					xP = x*output_size + (patch_size - output_size) // 2
 					yP = y*output_size + (patch_size - output_size) // 2
 					#print(outputs.shape)
-					imgPL[xP:xP+output_size, yP:yP+output_size] = np.argmin(outputs[x*yDim + y], 2)#outputs[x*yDim + y, :, :, 0]
+					if heatMap:
+						imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
+					else:
+						imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
 			pyplot.subplot(131)
 			pyplot.imshow(imgF)
 			pyplot.subplot(132)
