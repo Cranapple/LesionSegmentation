@@ -3,11 +3,12 @@ import os
 import numpy
 from matplotlib import pyplot
 from six.moves import cPickle as pickle
+from parameters import *
 
 thresholdVal = 5000
 featureArray = []
 labelArray = []
-for i in range(1, 13):
+for i in range(1, numPatients + 1):
 	PathFeatures = "./LesionDataset/" + str(i) + "/Features"
 	PathLabels = "./LesionDataset/" + str(i) + "/Labels"
 
@@ -22,7 +23,8 @@ for i in range(1, 13):
 	for filenameDCM in lstFilesDCM:
 		ds = dicom.read_file(filenameDCM)
 		img = ds.pixel_array
-		img = (2/img.max()) * img - 1	#normalize
+		img = img - numpy.mean(img)		#normalize
+		img = img / numpy.std(img)
 		ArrayDicom[lstFilesDCM.index(filenameDCM), :, :] = img #ds.pixel_array 
 	featureArray.append(ArrayDicom)
 

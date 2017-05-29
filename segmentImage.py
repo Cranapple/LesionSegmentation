@@ -10,10 +10,10 @@ import tensorflow as tf
 
 #Program to run and vizualize a segmentation on a image using the saved model
 
-numPatchSamples = 0				#Patches
+numPatchSamples = 20				#Patches
 numImgSamples = 0				#Images
-numTestSamplePatches = 20		#Prediction Patches
-numTestSamples = 20				#Prediction Images
+numTestSamplePatches = 0		#Prediction Patches
+numTestSamples = 0				#Prediction Images
 modelName = "lesion_model"
 step = 500
 heatMap = True;
@@ -51,7 +51,7 @@ for i in random.choice(train_size, numPatchSamples):
 	pyplot.show()
 
 #TEST IMAGES
-for i in random.choice(12, numImgSamples):
+for i in random.choice(numPatients, numImgSamples):
 	for z in random.choice(len(features[i]), 1):
 		img = features[i][z]
 		pyplot.subplot(121)
@@ -103,7 +103,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		pyplot.show()
 
 	#TEST FULL IMAGE PREDICTIONS
-	for i in random.choice(12, numTestSamples):
+	for i in random.choice(numPatients, numTestSamples):
 		for z in random.choice(len(features[i]), 1):
 	#for i in range(0, 10):
 	#	for z in range(10, 11):
