@@ -5,6 +5,27 @@ from matplotlib import pyplot
 from six.moves import cPickle as pickle
 from parameters import *
 
+threshold = 25
+
+def mean(img):
+	img = img.flatten()
+	sum, px = 0, 0
+	for p in img:
+		if p >= threshold:
+			sum += p
+			px += 1
+	return sum / px
+
+def stddev(img):
+	m = mean(img)
+	img = img.flatten()
+	sum, px = 0, 0
+	for p in img:
+		if p >= threshold:
+			sum += (p - m)*(p - m)
+			px += 1
+	return numpy.sqrt(sum / px)
+
 thresholdVal = 5000
 featureArray = []
 labelArray = []
@@ -23,8 +44,8 @@ for i in range(1, numPatients + 1):
 	for filenameDCM in lstFilesDCM:
 		ds = dicom.read_file(filenameDCM)
 		img = ds.pixel_array
-		img = img - numpy.mean(img)		#normalize
-		img = img / numpy.std(img)
+		img = img - mean(img)		#normalize
+		img = img / stddev(img)
 		ArrayDicom[lstFilesDCM.index(filenameDCM), :, :] = img #ds.pixel_array 
 	featureArray.append(ArrayDicom)
 

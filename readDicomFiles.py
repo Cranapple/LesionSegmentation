@@ -4,7 +4,7 @@ import numpy
 from matplotlib import pyplot
 #import cv2
 
-PathDicom = "./LesionDataset/2/Labels"
+PathDicom = "./LesionDataset/21/Features"
 lstFilesDCM = []  # create an empty list
 for dirName, subdirList, fileList in os.walk(PathDicom):
     for filename in fileList:

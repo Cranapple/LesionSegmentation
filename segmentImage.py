@@ -10,10 +10,10 @@ import tensorflow as tf
 
 #Program to run and vizualize a segmentation on a image using the saved model
 
-numPatchSamples = 5				#Patches
-numImgSamples = 5				#Images
-numTestSamplePatches = 5		#Prediction Patches
-numTestSamples = 5				#Prediction Images
+numPatchSamples = 0				#Patches
+numImgSamples = 20				#Images
+numTestSamplePatches = 0		#Prediction Patches
+numTestSamples = 0				#Prediction Images
 modelName = "455CNN"
 step = 0
 heatMap = True
@@ -70,10 +70,10 @@ for i in random.choice(numPatients, numImgSamples):
 	for z in random.choice(len(features[i]), 1):
 		img = features[i][z]
 		pyplot.subplot(121)
-		pyplot.imshow(img)
+		pyplot.imshow(img, cmap='gray')
 		img = labels[i][z]
 		pyplot.subplot(122)
-		pyplot.imshow(img)
+		pyplot.imshow(img, cmap='gray')
 		pyplot.show()
 
 
@@ -152,11 +152,11 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 				imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
 				imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
 		pyplot.subplot(141)
-		pyplot.imshow(imgF)
+		pyplot.imshow(imgF, cmap='gray')
 		pyplot.subplot(142)
-		pyplot.imshow(imgL)
+		pyplot.imshow(imgL, cmap='gray')
 		pyplot.subplot(143)
-		pyplot.imshow(imgPL)
+		pyplot.imshow(imgPL, cmap='gray')
 		pyplot.subplot(144)
-		pyplot.imshow(imgPL2)
+		pyplot.imshow(imgPL2, cmap='gray')
 		pyplot.show()
