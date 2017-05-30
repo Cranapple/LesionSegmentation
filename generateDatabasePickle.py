@@ -16,6 +16,16 @@ def shuffle_in_unison(a, b):
         shuffled_b.append(b[old_index])
     return shuffled_a, shuffled_b
 
+def shuffle_in_unison_numpy(a, b):
+    assert len(a) == len(b)
+    shuffled_a = np.empty(a.shape, dtype=a.dtype)
+    shuffled_b = np.empty(b.shape, dtype=b.dtype)
+    permutation = np.random.permutation(len(a))
+    for old_index, new_index in enumerate(permutation):
+        shuffled_a[new_index] = a[old_index]
+        shuffled_b[new_index] = b[old_index]
+    return shuffled_a, shuffled_b
+
 pickle_file = 'lesion.pickle'
 
 with open(pickle_file, 'rb') as f:
@@ -60,13 +70,21 @@ for n in range(database_size):
 		if patch_labels[n, outputSpan, outputSpan, 0] > 0.5:
 			numLesions += 1
 			success = True
-			#print(np.sum(patch_labels[n, :, :, 0]))
 
 		if n * datasetPercentLesion <= numLesions:
 			success = True;
 
 train_features, valid_features = np.split(patch_features, [train_size])
 train_labels, valid_labels = np.split(patch_labels, [train_size])
+
+train_features, train_labels = shuffle_in_unison_numpy(train_features, train_labels)
+valid_features, valid_labels = shuffle_in_unison_numpy(valid_features, valid_labels)
+
+train_images = features[:len(features)*9//10]
+valid_images = features[len(features)*9//10:]
+train_images_labels = labels[:len(features)*9//10]
+valid_images_labels = labels[len(features)*9//10:]
+
 pickle_file = 'lesionDatabase.pickle'
 
 print("Number of samples with lesions: ", numLesions)
@@ -76,7 +94,11 @@ try:
     'train_features': train_features,
     'train_labels': train_labels,
     'valid_features': valid_features,
-    'valid_labels': valid_labels
+    'valid_labels': valid_labels,
+    'train_images': train_images,
+    'valid_images': valid_images,
+    'train_images_labels': train_images_labels,
+    'valid_images_labels': valid_images_labels
     }
   pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
   f.close()
