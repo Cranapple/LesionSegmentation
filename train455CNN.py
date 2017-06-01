@@ -9,7 +9,7 @@ import sys
 from math import sqrt
 import os
 
-modelName = "455CNN"
+modelName = "455CNNTensorboardTest"
 pickle_file = 'lesionDatabase.pickle'
 saveInterval = 1000
 
@@ -37,7 +37,7 @@ with tf.device(device_name):
 	tf_train_features = tf.placeholder(tf.float32, shape=(batch_size, patch_size, patch_size, 1), name="trainFeatures")
 	tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, output_size, output_size, 2), name="trainLabels")
 	tf_valid_features = tf.constant(valid_features, name="validFeatures")
-	#tf_valid_labels = tf.constant(valid_labels)
+	tf_valid_labels = tf.constant(valid_labels, name="validLabels")
 
 	tf_test_features = tf.placeholder(tf.float32, shape=(None, patch_size, patch_size, 1), name="features")
 
@@ -54,6 +54,19 @@ with tf.device(device_name):
 
 	class_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, 2], stddev=sqrt(2.0/depth3))) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
+
+	def tf_DSC(predictions, labels):
+		s = tf.shape(predictions)[0:3]
+		ones = tf.ones(s, tf.int64)
+		zeros = tf.zeros(s, tf.int64)
+		TP = tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(tf.argmax(predictions, 3), ones), tf.equal(tf.argmax(labels, 3), ones)), tf.float32))
+		FP = tf.reduce_sum(tf.cast(tf.logical_and(tf.equal(tf.argmax(predictions, 3), ones), tf.equal(tf.argmax(labels, 3), zeros)), tf.float32))
+		P = tf.reduce_sum(tf.cast(tf.equal(tf.argmax(labels, 3), ones), tf.float32))
+		return 100.0 * TP / (FP + P + epsilon)
+
+	def tf_accuracy(predictions, labels):
+		s = tf.cast(tf.shape(predictions), tf.float32)
+		return 100.0 * tf.reduce_sum(tf.cast(tf.equal(tf.argmax(predictions, 3), tf.argmax(labels, 3)), tf.float32)) / (s[0] * s[1] * s[2])
 
 	def batch_norm_wrapper(inputs, is_training, decay = 0.995):
 
@@ -105,6 +118,21 @@ with tf.device(device_name):
 	valid_prediction = tf.nn.softmax(model(tf_valid_features), name="validPred")
 	test_prediction = tf.nn.softmax(model(tf_test_features, isTraining=False), name="labels")
 
+	#Accuracies
+	trainAccuracy = tf_accuracy(train_prediction, tf_train_labels)
+	trainDSC = tf_DSC(train_prediction, tf_train_labels)
+	validAccuracy = tf_accuracy(valid_prediction, tf_valid_labels)
+	validDSC = tf_DSC(valid_prediction, tf_valid_labels)
+
+	lossSum = tf.summary.scalar("loss", loss)
+	trainAccSum = tf.summary.scalar("Train Accuracy", trainAccuracy)
+	trainDSCSum = tf.summary.scalar("Train DSC", trainDSC)
+	validAccSum = tf.summary.scalar("Valid Accuracy", validAccuracy)
+	validDSCSum = tf.summary.scalar("Valid DSC", validDSC)
+
+	validSum = tf.summary.merge_all()
+	trainSum = tf.summary.merge((lossSum, trainAccSum, trainDSCSum))
+
 #Save the model for running tests on images
 
 num_steps = 20001
@@ -113,23 +141,36 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 	tf.global_variables_initializer().run()
 	print('Initialized')
 	saver = tf.train.Saver()
+	if not os.path.exists('./lesion_tensorboard/' + modelName):
+		os.makedirs('./lesion_tensorboard/' + modelName)
+	writer = tf.summary.FileWriter('./lesion_tensorboard/' + modelName, session.graph)
 	print('Valid Label Percent: %.1f%%\n' % (100 * percentLesion(valid_labels)))
+	sys.stdout.flush()
 	for step in range(num_steps):
 		offset = (step * batch_size) % (train_labels.shape[0] - batch_size)
 		batch_features = train_features[offset:(offset + batch_size), :, :, :]
 		batch_labels = train_labels[offset:(offset + batch_size), :, :, :]
 		feed_dict = {tf_train_features : batch_features, tf_train_labels : batch_labels}
-		_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
-		if (step % 5 == 0):
-			print('Minibatch loss at step %d: %f' % (step, l))
-			print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
-			print('Minibatch DSC: %.1f%%' % DSC(predictions, batch_labels))
-			if (step % 100 == 0):
-				print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
-				print('Validation DSC: %.1f%%' % DSC(valid_prediction.eval(), valid_labels))
-			print('\n')
-			sys.stdout.flush()
+		if (step % 100 == 0):
+			_, l, predictions, summary = session.run([optimizer, loss, train_prediction, validSum], feed_dict=feed_dict)
+			writer.add_summary(summary, step * batch_size / train_size)
+		elif (step % 10 == 0):
+			_, l, predictions, summary = session.run([optimizer, loss, train_prediction, trainSum], feed_dict=feed_dict)
+			writer.add_summary(summary, step * batch_size / train_size)
+
+		print(step, step * batch_size / train_size)
+		
+		#_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
+		#if (step % 5 == 0):
+		#	print('Minibatch loss at step %d: %f' % (step, l))
+		#	print('Minibatch accuracy: %.1f%%' % accuracy(predictions, batch_labels))
+		#	print('Minibatch DSC: %.1f%%' % DSC(predictions, batch_labels))
+		#	if (step % 100 == 0):
+		#		print('Validation accuracy: %.1f%%' % accuracy(valid_prediction.eval(), valid_labels))
+		#		print('Validation DSC: %.1f%%' % DSC(valid_prediction.eval(), valid_labels))
+		#	print('\n')
+		#	sys.stdout.flush()
 		if (step % saveInterval == 0):
-			if not os.path.exists('.\lesion_models\\' + modelName):
-				os.makedirs('.\lesion_models\\' + modelName)
-			saver.save(session, '.\lesion_models\\' + modelName + "\\" + modelName, global_step=step)
+			if not os.path.exists('./lesion_models/' + modelName):
+				os.makedirs('./lesion_models/' + modelName)
+			saver.save(session, './lesion_models/' + modelName + "/" + modelName, global_step=step)

@@ -11,11 +11,11 @@ import tensorflow as tf
 #Program to run and vizualize a segmentation on a image using the saved model
 
 numPatchSamples = 0				#Patches
-numImgSamples = 20				#Images
+numImgSamples = 0				#Images
 numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 0				#Prediction Images
-modelName = "455CNN"
-step = 0
+numTestSamples = 20				#Prediction Images
+modelName = "455CNNTensorboardTest"
+step = 20000
 heatMap = True
 useValid = True;
 
