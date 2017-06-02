@@ -9,7 +9,7 @@ import sys
 from math import sqrt
 import os
 
-modelName = "455CNN"
+modelName = "455CNNnorm"
 pickle_file = 'lesionDatabase.pickle'
 saveInterval = 1000
 kernel_size = 5
@@ -53,6 +53,26 @@ with tf.device(device_name):
 	cov3_biases = tf.Variable(tf.zeros([depth2]))
 	cov4_biases = tf.Variable(tf.zeros([depth3]))
 
+	cov1_norm_mean = tf.Variable(tf.ones([depth1]), trainable=False)
+	cov2_norm_mean = tf.Variable(tf.ones([depth2]), trainable=False)
+	cov3_norm_mean = tf.Variable(tf.ones([depth2]), trainable=False)
+	cov4_norm_mean = tf.Variable(tf.ones([depth3]), trainable=False)
+
+	cov1_norm_var = tf.Variable(tf.zeros([depth1]), trainable=False)
+	cov2_norm_var = tf.Variable(tf.zeros([depth2]), trainable=False)
+	cov3_norm_var = tf.Variable(tf.zeros([depth2]), trainable=False)
+	cov4_norm_var = tf.Variable(tf.zeros([depth3]), trainable=False)
+
+	cov1_norm_scale = tf.Variable(tf.ones([depth1]))
+	cov2_norm_scale = tf.Variable(tf.ones([depth2]))
+	cov3_norm_scale = tf.Variable(tf.ones([depth2]))
+	cov4_norm_scale = tf.Variable(tf.ones([depth3]))
+
+	cov1_norm_beta = tf.Variable(tf.zeros([depth1]))
+	cov2_norm_beta = tf.Variable(tf.zeros([depth2]))
+	cov3_norm_beta = tf.Variable(tf.zeros([depth2]))
+	cov4_norm_beta = tf.Variable(tf.zeros([depth3]))
+
 	class_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, 2], stddev=sqrt(2.0/depth3))) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
 
@@ -69,29 +89,44 @@ with tf.device(device_name):
 		s = tf.cast(tf.shape(predictions), tf.float32)
 		return 100.0 * tf.reduce_sum(tf.cast(tf.equal(tf.argmax(predictions, 3), tf.argmax(labels, 3)), tf.float32)) / (s[0] * s[1] * s[2])
 
+	def batch_norm_wrapper(inputs, scale, beta, pop_mean, pop_var, is_training, decay = 0.99):
+
+		if is_training:
+			batch_mean, batch_var = tf.nn.moments(inputs,[0,1,2])
+			train_mean = tf.assign(pop_mean, pop_mean * decay + batch_mean * (1 - decay))
+			train_var = tf.assign(pop_var, pop_var * decay + batch_var * (1 - decay))
+			with tf.control_dependencies([train_mean, train_var]):
+				return tf.nn.batch_normalization(inputs, batch_mean, batch_var, beta, scale, epsilon)
+		else:
+			return tf.nn.batch_normalization(inputs, pop_mean, pop_var, beta, scale, epsilon)
+
 	# Model.
 	def model(data, isTraining=True):
 		conv = tf.nn.conv2d(data, cov1_weights, [1, 1, 1, 1], padding='VALID')				#cov1
 		hidden = tf.nn.relu(conv + cov1_biases)
+		convNorm = batch_norm_wrapper(hidden, cov1_norm_scale, cov1_norm_beta, cov1_norm_mean, cov1_norm_var, is_training=isTraining)
 		if(isTraining):
-			hidden = tf.nn.dropout(hidden, dropoutRate)
+			convNorm = tf.nn.dropout(convNorm, dropoutRate)
 
-		conv = tf.nn.conv2d(hidden, cov2_weights, [1, 1, 1, 1], padding='VALID')			#cov2
+		conv = tf.nn.conv2d(convNorm, cov2_weights, [1, 1, 1, 1], padding='VALID')			#cov2
 		hidden = tf.nn.relu(conv + cov2_biases)
+		convNorm = batch_norm_wrapper(hidden, cov2_norm_scale, cov2_norm_beta, cov2_norm_mean, cov2_norm_var, is_training=isTraining)
 		if(isTraining):
-			hidden = tf.nn.dropout(hidden, dropoutRate)
+			convNorm = tf.nn.dropout(convNorm, dropoutRate)
 
-		conv = tf.nn.conv2d(hidden, cov3_weights, [1, 1, 1, 1], padding='VALID')			#cov3
+		conv = tf.nn.conv2d(convNorm, cov3_weights, [1, 1, 1, 1], padding='VALID')			#cov3
 		hidden = tf.nn.relu(conv + cov3_biases)
+		convNorm = batch_norm_wrapper(hidden, cov3_norm_scale, cov3_norm_beta, cov3_norm_mean, cov3_norm_var, is_training=isTraining)
 		if(isTraining):
-			hidden = tf.nn.dropout(hidden, dropoutRate)
+			convNorm = tf.nn.dropout(convNorm, dropoutRate)
 
-		conv = tf.nn.conv2d(hidden, cov4_weights, [1, 1, 1, 1], padding='VALID')			#cov4
+		conv = tf.nn.conv2d(convNorm, cov4_weights, [1, 1, 1, 1], padding='VALID')			#cov4
 		hidden = tf.nn.relu(conv + cov4_biases)
+		convNorm = batch_norm_wrapper(hidden, cov4_norm_scale, cov4_norm_beta, cov4_norm_mean, cov4_norm_var, is_training=isTraining)
 		if(isTraining):
-			hidden = tf.nn.dropout(hidden, dropoutRate)
+			convNorm = tf.nn.dropout(convNorm, dropoutRate)
 
-		conv = tf.nn.conv2d(hidden, class_weights, [1, 1, 1, 1], padding='VALID')			#Classification
+		conv = tf.nn.conv2d(convNorm, class_weights, [1, 1, 1, 1], padding='VALID')			#Classification
 		return conv + class_biases
 	
 	# Training computation.
@@ -105,6 +140,14 @@ with tf.device(device_name):
 			+ l2Rate*tf.nn.l2_loss(cov2_biases)
 			+ l2Rate*tf.nn.l2_loss(cov3_biases)
 			+ l2Rate*tf.nn.l2_loss(cov4_biases)
+			+ l2Rate*tf.nn.l2_loss(cov1_norm_scale)
+			+ l2Rate*tf.nn.l2_loss(cov2_norm_scale)
+			+ l2Rate*tf.nn.l2_loss(cov3_norm_scale)
+			+ l2Rate*tf.nn.l2_loss(cov4_norm_scale)
+			+ l2Rate*tf.nn.l2_loss(cov1_norm_beta)
+			+ l2Rate*tf.nn.l2_loss(cov2_norm_beta)
+			+ l2Rate*tf.nn.l2_loss(cov3_norm_beta)
+			+ l2Rate*tf.nn.l2_loss(cov4_norm_beta)
 			, name="loss")
 	# Optimizer.
 	optimizer = tf.train.AdamOptimizer(0.005).minimize(loss, name="optimizer")
@@ -159,7 +202,6 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 
 		print(step)
 		sys.stdout.flush()
-		
 		#_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
 		#if (step % 5 == 0):
 		#	print('Minibatch loss at step %d: %f' % (step, l))

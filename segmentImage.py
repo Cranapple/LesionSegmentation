@@ -13,11 +13,12 @@ import tensorflow as tf
 numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
 numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 20				#Prediction Images
-modelName = "455CNNTensorboardTest"
+numTestSamples = 0				#Prediction Images
+modelName = "455CNN"
 step = 20000
 heatMap = True
 useValid = True;
+accuracyScore = True;
 
 #---------------------------------------------------------------------------------
 
@@ -160,3 +161,38 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		pyplot.subplot(144)
 		pyplot.imshow(imgPL2, cmap='gray')
 		pyplot.show()
+
+	#ACCURACY SCORE
+	if accuracyScore:
+		sumAcc = 0;
+		sumDSC = 0;
+		n = 0;
+		for i in range(len(valid_images)):
+			imgF = valid_images[i]
+			imgL = valid_images_labels[i]
+			if np.sum(imgL) < 0.5:
+				continue;
+			imgPL = np.zeros(imgL.shape, dtype=np.float32)
+			#imgPL2 = np.zeros(imgL.shape, dtype=np.float32)
+			xDim = (imgF.shape[0] - patch_size) // output_size
+			yDim = (imgF.shape[1] - patch_size) // output_size
+			patches = np.zeros((xDim*yDim, patch_size, patch_size, 1), dtype=np.float32)
+			for x in range(xDim):
+				for y in range(yDim):
+					patches[x * yDim + y, :, :, 0] = imgF[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
+
+			feed_dict = {tf_test_features : patches}
+			outputs = session.run([test_prediction], feed_dict=feed_dict)
+			outputs = np.array(outputs).reshape((-1, output_size, output_size, 2))
+			for x in range(xDim):
+				for y in range(yDim):
+					xP = x*output_size + (patch_size - output_size) // 2
+					yP = y*output_size + (patch_size - output_size) // 2
+					imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+					#imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+			sumAcc += imgAccuracy(imgPL, imgL)
+			sumDSC += imgDSC(imgPL, imgL)
+			n += 1
+		print("Average Accuracy: ", sumAcc / n)
+		print("Average DSC: ", sumDSC / n)
+		print("\n")
