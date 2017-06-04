@@ -13,9 +13,9 @@ import tensorflow as tf
 numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
 numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 0				#Prediction Images
-modelName = "455CNN"
-step = 20000
+numTestSamples = 20				#Prediction Images
+modelName = "833CNNnorm"
+step = 10000
 heatMap = True
 useValid = True;
 accuracyScore = True;

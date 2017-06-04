@@ -9,7 +9,7 @@ import sys
 from math import sqrt
 import os
 
-modelName = "455CNNnorm"
+modelName = "455CNNNorm"
 pickle_file = 'lesionDatabase.pickle'
 saveInterval = 1000
 kernel_size = 5
@@ -179,7 +179,7 @@ num_steps = 10001
 with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_placement=False)) as session:
 	tf.global_variables_initializer().run()
 	print('Initialized')
-	saver = tf.train.Saver()
+	saver = tf.train.Saver(max_to_keep=10)
 	if not os.path.exists('./lesion_tensorboard/' + modelName):
 		os.makedirs('./lesion_tensorboard/' + modelName)
 	writer = tf.summary.FileWriter('./lesion_tensorboard/' + modelName, session.graph)

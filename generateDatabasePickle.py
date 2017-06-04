@@ -63,6 +63,12 @@ for n in range(database_size):
 		try:
 			patch_features[n, :, :, 0] = features[i][x-patchSpan:x+patchSpan+1, y-patchSpan:y+patchSpan+1]
 			patch_labels[n, :, :, 0] = labels[i][x-outputSpan:x+outputSpan+1, y-outputSpan:y+outputSpan+1]
+			if(random.random() < flipRate):
+				patch_features[n, :, :, 0] = cp.flipud(patch_features[n, :, :, 0])
+				patch_labels[n, :, :, 0] = cp.flipud(patch_labels[n, :, :, 0])
+			if(random.random() < flipRate):
+				patch_features[n, :, :, 0] = cp.fliplr(patch_features[n, :, :, 0])
+				patch_labels[n, :, :, 0] = cp.fliplr(patch_labels[n, :, :, 0])
 		except:
 			continue
 		patch_labels[n, :, :, 1] = abs(1 - patch_labels[n, :, :, 0])

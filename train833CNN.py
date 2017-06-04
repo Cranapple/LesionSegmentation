@@ -9,10 +9,10 @@ import sys
 from math import sqrt
 import os
 
-modelName = "455CNN"
+modelName = "833CNN"
 pickle_file = 'lesionDatabase.pickle'
 saveInterval = 1000
-kernel_size = 5
+kernel_size = 3
 
 #Labels are of [datasetSize, output_size, output_size, 1]
 #Features are of [datasetSize, patch_size, patch_size, 2]
@@ -44,14 +44,22 @@ with tf.device(device_name):
 
 	# Variables.
 	cov1_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, 1, depth1], stddev=sqrt(2.0/depth1)))
-	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=sqrt(2.0/depth1)))
-	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=sqrt(2.0/depth2)))
-	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=sqrt(2.0/depth2)))
+	cov2_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth1], stddev=sqrt(2.0/depth1)))
+	cov3_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth1, depth2], stddev=sqrt(2.0/depth1)))
+	cov4_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=sqrt(2.0/depth2)))
+	cov5_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth2], stddev=sqrt(2.0/depth2)))
+	cov6_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth2, depth3], stddev=sqrt(2.0/depth3)))
+	cov7_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=sqrt(2.0/depth3)))
+	cov8_weights = tf.Variable(tf.truncated_normal([kernel_size, kernel_size, depth3, depth3], stddev=sqrt(2.0/depth3)))
 
 	cov1_biases = tf.Variable(tf.zeros([depth1]))
-	cov2_biases = tf.Variable(tf.zeros([depth2]))
+	cov2_biases = tf.Variable(tf.zeros([depth1]))
 	cov3_biases = tf.Variable(tf.zeros([depth2]))
-	cov4_biases = tf.Variable(tf.zeros([depth3]))
+	cov4_biases = tf.Variable(tf.zeros([depth2]))
+	cov5_biases = tf.Variable(tf.zeros([depth2]))
+	cov6_biases = tf.Variable(tf.zeros([depth3]))
+	cov7_biases = tf.Variable(tf.zeros([depth3]))
+	cov8_biases = tf.Variable(tf.zeros([depth3]))
 
 	class_weights = tf.Variable(tf.truncated_normal([1, 1, depth3, 2], stddev=sqrt(2.0/depth3))) #First for lesion, second for non-lesion
 	class_biases = tf.Variable(tf.zeros([2]))
@@ -91,6 +99,26 @@ with tf.device(device_name):
 		if(isTraining):
 			hidden = tf.nn.dropout(hidden, dropoutRate)
 
+		conv = tf.nn.conv2d(hidden, cov5_weights, [1, 1, 1, 1], padding='VALID')				#cov5
+		hidden = tf.nn.relu(conv + cov5_biases)
+		if(isTraining):
+			hidden = tf.nn.dropout(hidden, dropoutRate)
+
+		conv = tf.nn.conv2d(hidden, cov6_weights, [1, 1, 1, 1], padding='VALID')			#cov6
+		hidden = tf.nn.relu(conv + cov6_biases)
+		if(isTraining):
+			hidden = tf.nn.dropout(hidden, dropoutRate)
+
+		conv = tf.nn.conv2d(hidden, cov7_weights, [1, 1, 1, 1], padding='VALID')			#cov7
+		hidden = tf.nn.relu(conv + cov7_biases)
+		if(isTraining):
+			hidden = tf.nn.dropout(hidden, dropoutRate)
+
+		conv = tf.nn.conv2d(hidden, cov8_weights, [1, 1, 1, 1], padding='VALID')			#cov8
+		hidden = tf.nn.relu(conv + cov8_biases)
+		if(isTraining):
+			hidden = tf.nn.dropout(hidden, dropoutRate)
+
 		conv = tf.nn.conv2d(hidden, class_weights, [1, 1, 1, 1], padding='VALID')			#Classification
 		return conv + class_biases
 	
@@ -101,10 +129,18 @@ with tf.device(device_name):
 			+ l2Rate*tf.nn.l2_loss(cov2_weights)
 			+ l2Rate*tf.nn.l2_loss(cov3_weights)
 			+ l2Rate*tf.nn.l2_loss(cov4_weights)
+			+ l2Rate*tf.nn.l2_loss(cov5_weights)
+			+ l2Rate*tf.nn.l2_loss(cov6_weights)
+			+ l2Rate*tf.nn.l2_loss(cov7_weights)
+			+ l2Rate*tf.nn.l2_loss(cov8_weights)
 			+ l2Rate*tf.nn.l2_loss(cov1_biases)
 			+ l2Rate*tf.nn.l2_loss(cov2_biases)
 			+ l2Rate*tf.nn.l2_loss(cov3_biases)
 			+ l2Rate*tf.nn.l2_loss(cov4_biases)
+			+ l2Rate*tf.nn.l2_loss(cov5_biases)
+			+ l2Rate*tf.nn.l2_loss(cov6_biases)
+			+ l2Rate*tf.nn.l2_loss(cov7_biases)
+			+ l2Rate*tf.nn.l2_loss(cov8_biases)
 			, name="loss")
 	# Optimizer.
 	optimizer = tf.train.AdamOptimizer(0.005).minimize(loss, name="optimizer")
@@ -159,7 +195,6 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 
 		print(step)
 		sys.stdout.flush()
-		
 		#_, l, predictions = session.run([optimizer, loss, train_prediction], feed_dict=feed_dict)
 		#if (step % 5 == 0):
 		#	print('Minibatch loss at step %d: %f' % (step, l))

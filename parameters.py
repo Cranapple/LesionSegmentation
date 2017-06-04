@@ -16,6 +16,7 @@ numPatients = 23
 datasetPercentLesion = 0.5
 dropoutRate = 0.98
 l2Rate = 0.00001
+flipRate = 0.10
 
 epsilon = 1e-6
 
