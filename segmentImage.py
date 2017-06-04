@@ -5,6 +5,7 @@ from six.moves import cPickle as pickle
 from parameters import *
 from numpy import random
 import tensorflow as tf
+import math
 
 #---------------------------------------------------------------------------------
 
@@ -13,9 +14,9 @@ import tensorflow as tf
 numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
 numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 20				#Prediction Images
+numTestSamples = 0				#Prediction Images
 modelName = "833CNNnorm"
-step = 10000
+step = 6000
 heatMap = True
 useValid = True;
 accuracyScore = True;
@@ -136,22 +137,36 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 			imgL = train_images_labels[i]
 		imgPL = np.zeros(imgL.shape, dtype=np.float32)
 		imgPL2 = np.zeros(imgL.shape, dtype=np.float32)
-		xDim = (imgF.shape[0] - patch_size) // output_size
-		yDim = (imgF.shape[1] - patch_size) // output_size
+		xDim = math.ceil(imgF.shape[0]  / output_size)
+		yDim = math.ceil(imgF.shape[1]  / output_size)
+		padSize = (patch_size-output_size)//2
+		padX = xDim*output_size+padSize - imgF.shape[0]
+		padY = yDim*output_size+padSize - imgF.shape[1]
+		imgF2 = np.pad(imgF, ((padSize,  padX), (padSize, padY)), "minimum")
 		patches = np.zeros((xDim*yDim, patch_size, patch_size, 1), dtype=np.float32)
 		for x in range(xDim):
 			for y in range(yDim):
-				patches[x * yDim + y, :, :, 0] = imgF[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
+				patches[x * yDim + y, :, :, 0] = imgF2[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
 
 		feed_dict = {tf_test_features : patches}
 		outputs = session.run([test_prediction], feed_dict=feed_dict)
 		outputs = np.array(outputs).reshape((-1, output_size, output_size, 2))
 		for x in range(xDim):
 			for y in range(yDim):
-				xP = x*output_size + (patch_size - output_size) // 2
-				yP = y*output_size + (patch_size - output_size) // 2
-				imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
-				imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+				xP = x*output_size
+				yP = y*output_size
+				if x == xDim - 1 and y == yDim - 1:
+					imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0]
+					imgPL2[xP:imgPL.shape[0], yP:imgPL.shape[1]]  = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
+				elif x == xDim - 1:
+					imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0]
+					imgPL2[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
+				elif y == yDim - 1:
+					imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0]
+					imgPL2[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
+				else:
+					imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
+					imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
 		pyplot.subplot(141)
 		pyplot.imshow(imgF, cmap='gray')
 		pyplot.subplot(142)
@@ -174,22 +189,36 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 				continue;
 			imgPL = np.zeros(imgL.shape, dtype=np.float32)
 			#imgPL2 = np.zeros(imgL.shape, dtype=np.float32)
-			xDim = (imgF.shape[0] - patch_size) // output_size
-			yDim = (imgF.shape[1] - patch_size) // output_size
+			xDim = math.ceil(imgF.shape[0]  / output_size)
+			yDim = math.ceil(imgF.shape[1]  / output_size)
+			padSize = (patch_size-output_size)//2
+			padX = xDim*output_size+padSize - imgF.shape[0]
+			padY = yDim*output_size+padSize - imgF.shape[1]
+			imgF2 = np.pad(imgF, ((padSize,  padX), (padSize, padY)), "minimum")
 			patches = np.zeros((xDim*yDim, patch_size, patch_size, 1), dtype=np.float32)
 			for x in range(xDim):
 				for y in range(yDim):
-					patches[x * yDim + y, :, :, 0] = imgF[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
+					patches[x * yDim + y, :, :, 0] = imgF2[x*output_size:x*output_size+patch_size, y*output_size:y*output_size+patch_size]
 
 			feed_dict = {tf_test_features : patches}
 			outputs = session.run([test_prediction], feed_dict=feed_dict)
 			outputs = np.array(outputs).reshape((-1, output_size, output_size, 2))
 			for x in range(xDim):
 				for y in range(yDim):
-					xP = x*output_size + (patch_size - output_size) // 2
-					yP = y*output_size + (patch_size - output_size) // 2
-					imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
-					#imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+					xP = x*output_size
+					yP = y*output_size
+					if x == xDim - 1 and y == yDim - 1:
+						imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
+						#imgPL2[xP:imgPL.shape[0], yP:imgPL.shape[1]]  = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
+					elif x == xDim - 1:
+						imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
+						#imgPL2[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
+					elif y == yDim - 1:
+						imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
+						#imgPL2[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
+					else:
+						imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+						#imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
 			sumAcc += imgAccuracy(imgPL, imgL)
 			sumDSC += imgDSC(imgPL, imgL)
 			n += 1
