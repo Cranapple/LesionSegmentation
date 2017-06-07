@@ -1,22 +1,21 @@
 
 import numpy as np
 
-patch_size = 25
-output_size = 25 - 16 #Change depending on number of conv.
-batch_size = 256
-depth1 = 30
-depth2 = 40
-depth3 = 50
-num_hidden = 150
-#kernel_size = 5
-train_size = 100000
-valid_size = 10000
+patch_size = 25 								#Size of patches sampled and used for training
+output_size = 25 - 16 							#Size of output for the model
+batch_size = 256 								#Size of batches during training
+depth1 = 30 									#First depth variable for the model
+depth2 = 40 									#Second depth variable for the model
+depth3 = 50 									#Third depth variable for the model
+num_hidden = 150 								#Number of hidden neurons. Not used by current models.
+train_size = 100000 							#Size of the training dataset
+valid_size = 10000 								#Size of the validation dataset
 database_size = train_size + valid_size
-numPatients = 23
-datasetPercentLesion = 0.5
-dropoutRate = 0.95
-l2Rate = 0.00001
-flipRate = 0.10
+numPatients = 23 								#Number of patients. Used during dataset generation.
+datasetPercentLesion = 0.5 						#Percent of patches that must be centered on a lesion during database generation.
+dropoutRate = 0.95 								#Rate for dropout in the models
+l2Rate = 0.00001 								#L2 coefficient in the models
+flipRate = 0.10 								#Percent rate at which patches are flipped during database generation.
 
 epsilon = 1e-6
 

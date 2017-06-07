@@ -13,16 +13,16 @@ import time
 
 #Program to run and vizualize a segmentation on a image using the saved model
 
-numPatchSamples = 0				#Patches
-numImgSamples = 0				#Images
-numTestSamplePatches = 0		#Prediction Patches
-numTestSamples = 0				#Prediction Images
-modelName = "833CNN"
-step = 10000
-heatMap = True
-useValid = True;
-accuracyScore = True;
-usePostProc = True;
+numPatchSamples = 0				#Number of patches to observe
+numImgSamples = 0				#Number of images to observe
+numTestSamplePatches = 0		#Number of patches to run prediction on and observe
+numTestSamples = 0				#Number of images to run prediction on and observe
+modelName = "833CNN"			#Model to be used for prediction
+step = 10000					#Model step number
+heatMap = True 					#True for prediction heat maps, false for binary predictions
+useValid = True 				#Whether to use validation images or not
+accuracyScore = True 			#Whether to run average accuracy calculation over validation dataset
+usePostProc = True 				#Whether to use the image opening post-processing
 
 #---------------------------------------------------------------------------------
 
