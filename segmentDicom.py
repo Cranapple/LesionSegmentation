@@ -8,12 +8,18 @@ import tensorflow as tf
 import math
 import dicom
 import sys
+from skimage.morphology import disk, opening
 
-PathDicom = "./LesionDataset/5/Features/IM-0001-0017-0001.dcm"
-modelName = "833CNNnorm"
-step = 6000
+#PathDicom = "./LesionDataset/5/Features/IM-0001-0017-0001.dcm"
+if len(sys.argv) < 2:
+	print("Input file path as first argument.")
+	sys.exit()
+PathDicom = sys.argv[1]
+modelName = "833CNN"
+step = 10000
 
 threshold = 25
+selem = disk(4)
 
 def mean(img):
 	img = img.flatten()
@@ -73,16 +79,14 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 			yP = y*output_size
 			if x == xDim - 1 and y == yDim - 1:
 				imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0]
-				imgPL2[xP:imgPL.shape[0], yP:imgPL.shape[1]]  = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
 			elif x == xDim - 1:
 				imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0]
-				imgPL2[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
 			elif y == yDim - 1:
 				imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0]
-				imgPL2[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
 			else:
 				imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
-				imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+	imgPL = opening(imgPL, selem)
+	imgPL2 = imgPL > 0.5
 
 	pyplot.subplot(131)
 	pyplot.imshow(imgF, cmap='gray')

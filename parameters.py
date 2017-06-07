@@ -14,7 +14,7 @@ valid_size = 10000
 database_size = train_size + valid_size
 numPatients = 23
 datasetPercentLesion = 0.5
-dropoutRate = 0.98
+dropoutRate = 0.95
 l2Rate = 0.00001
 flipRate = 0.10
 

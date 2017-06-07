@@ -6,6 +6,8 @@ from parameters import *
 from numpy import random
 import tensorflow as tf
 import math
+from skimage.morphology import disk, opening
+import time
 
 #---------------------------------------------------------------------------------
 
@@ -15,13 +17,16 @@ numPatchSamples = 0				#Patches
 numImgSamples = 0				#Images
 numTestSamplePatches = 0		#Prediction Patches
 numTestSamples = 0				#Prediction Images
-modelName = "833CNNnorm"
-step = 6000
+modelName = "833CNN"
+step = 10000
 heatMap = True
 useValid = True;
 accuracyScore = True;
+usePostProc = True;
 
 #---------------------------------------------------------------------------------
+
+selem = disk(4)
 
 #Testing the dataset
 
@@ -157,16 +162,15 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 				yP = y*output_size
 				if x == xDim - 1 and y == yDim - 1:
 					imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0]
-					imgPL2[xP:imgPL.shape[0], yP:imgPL.shape[1]]  = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
 				elif x == xDim - 1:
 					imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0]
-					imgPL2[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
 				elif y == yDim - 1:
 					imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0]
-					imgPL2[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
 				else:
 					imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0]
-					imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+		if usePostProc:
+			imgPL = opening(imgPL, selem)
+		imgPL2 = imgPL > 0.5
 		pyplot.subplot(141)
 		pyplot.imshow(imgF, cmap='gray')
 		pyplot.subplot(142)
@@ -182,6 +186,7 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 		sumAcc = 0;
 		sumDSC = 0;
 		n = 0;
+		start_time = time.time()
 		for i in range(len(valid_images)):
 			imgF = valid_images[i]
 			imgL = valid_images_labels[i]
@@ -208,20 +213,20 @@ with tf.Session(config=tf.ConfigProto(allow_soft_placement=True, log_device_plac
 					xP = x*output_size
 					yP = y*output_size
 					if x == xDim - 1 and y == yDim - 1:
-						imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
-						#imgPL2[xP:imgPL.shape[0], yP:imgPL.shape[1]]  = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0] > 0.5
+						imgPL[xP:imgPL.shape[0], yP:imgPL.shape[1]] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, 0:imgPL.shape[1]-yP, 0]
 					elif x == xDim - 1:
-						imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
-						#imgPL2[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0] > 0.5
+						imgPL[xP:imgPL.shape[0], yP:yP+output_size] = outputs[x*yDim + y, 0:imgPL.shape[0]-xP, :, 0]
 					elif y == yDim - 1:
-						imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
-						#imgPL2[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0] > 0.5
+						imgPL[xP:xP+output_size, yP:imgPL.shape[1]] = outputs[x*yDim + y, :, 0:imgPL.shape[1]-yP, 0]
 					else:
-						imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
-						#imgPL2[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] > 0.5
+						imgPL[xP:xP+output_size, yP:yP+output_size] = outputs[x*yDim + y, :, :, 0] 
+			if usePostProc:
+				imgPL = opening(imgPL, selem)
+			imgPL = imgPL > 0.5
 			sumAcc += imgAccuracy(imgPL, imgL)
 			sumDSC += imgDSC(imgPL, imgL)
 			n += 1
+		print("Average Time per Image: ", (time.time() - start_time) / n)
 		print("Average Accuracy: ", sumAcc / n)
 		print("Average DSC: ", sumDSC / n)
 		print("\n")
