@@ -1,6 +1,9 @@
 # LesionSegmentation
 
 The code for the MRI FLAIR lesion segmentation project. Constructed for UCLA's CS 188 Medical Imaging Class.
+The report is submitted on CCLE and can also be found [here](https://github.com/Cranapple/LesionSegmentation/blob/master/report.pdf).
+Our dataset, along with our version of the generated files, will be shared directly with the instructor.
+I give permission for this work to be shared to reviewers for award consideration.
 
 ### Files
 **generateLesionPickle.py** - Generates the pickle file containing brain scans.
