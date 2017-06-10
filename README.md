@@ -32,8 +32,13 @@ tensorboard --logdir=./lesion_tensorboard/<ModelName>
 ```
 Tensorboard data should be deleted between runs, unless you wish to have data from two seperate runs go into the same graphs.
 ### Using the Models
-There are two ways to use the models for predictions. The first is segementDicom.py. This script takes in a filepath to the dicom image you want to segment as its first and only parameter, and will display the result as produced by the model named in the modelName variable.
+There are two ways to use the models for predictions. The first is segementDicom.py. This script takes in a filepath to the dicom image you want to segment as its first and only parameter, and will display the result as produced by the model named in the modelName variable. Here is an example usage.
+```
+python segmentDicom.py LesionDataset/5/Features/IM-0001-0020-0001.dcm
+```
 The second way is with segmentImage.py. This script is meant to be used to diagnose, visualize, and evaluate your model. It contains constants at the top of the file which are meant to be changed by the user for his or her needs. This script can display images and patches from your dataset, output predictions for images and patches in your dataset, and produce average accuracy, similarity and time spent for your model.
+
+This repository contains a version of the 833CNN model trained to 10,000 steps that you can use if you want to try this out on your own data without having to train a model on your own.
 
 ### Dependencies
 [numpy](http://www.numpy.org/): Used for tensorflow and other libraries.
