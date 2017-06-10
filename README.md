@@ -14,7 +14,7 @@ I give permission for this work to be shared to reviewers for award consideratio
 
 **segmentDicom.py** - File used to run the model on a standalone image. Takes in a dicom image filepath as the first argument and displays images of the predicted segmentation.
 
-**segmentImage.py** - Script used to observe data examples, run test predicitons, and calculate overall evaluation measures.
+**segmentImage.py** - Script used to observe data examples, run test predictions, and calculate overall evaluation measures.
 
 **train\<model>.py** - Files used to train models and generate tensorboard outputs.
 
@@ -50,3 +50,6 @@ The second way is with segmentImage.py. This script is meant to be used to diagn
 
 
 Developed on a Windows 10 machine with Python 3.5.2
+
+### Extra Information
+The two pickle generating files will generate lesion.pickle and lesionDatabase.pickle respectively. lesion.pickle contains two lists, features and arrays. Each element in the list is a numpy array of shape [number of scans, width, height], which represents all the scans of a specific patient. The features array contains the original image and the labels array contains the lesion segmentation bitmap. lesionDatabase.pickle contains the generated patches for training and their respective ground truth labels for both training and validation sets. It also contains the images and their labels, seperated by those used to generate training data and those used to generate the validation data.
